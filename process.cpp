@@ -101,9 +101,9 @@ void writeMatrixToFile(const vector<vector<int>>& matrix, const string& filename
 
     for (int i = 0; i < numRows; i++) {
         for (int j = 0; j < numCols; j++) {
-            file << matrix[i][j] << " ";
+            file << "c" << i+1 << j+1 << " " << matrix[i][j] << " ";
+            file << "\n";
         }
-        file << "\n";
     }
 }
 
