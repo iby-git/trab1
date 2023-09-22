@@ -2,8 +2,10 @@
 #include <fstream>
 #include <vector>
 #include <thread>
+#include <chrono>
 
 using namespace std;
+using namespace std::chrono;
 
 // Function to multiply a portion of two matrices
 void multiplyPart(const vector<vector<int>>& A, const vector<vector<int>>& B, vector<vector<int>>& result, int startRow, int endRow, int P) {
@@ -88,9 +90,9 @@ void writeMatrixToFile(const vector<vector<int>>& matrix, const string& filename
 
     for (int i = 0; i < numRows; i++) {
         for (int j = 0; j < numCols; j++) {
-            file << matrix[i][j] << " ";
+            file << "c" << i+1 << j+1 << " " << matrix[i][j] << " ";
+            file << "\n";
         }
-        file << "\n";
     }
 }
 
@@ -108,11 +110,22 @@ int main(int argc, char* argv[]) {
     // Extract the value of P from the command line
     int P = atoi(argv[3]);
 
+    // Start counting the time
+    auto start = high_resolution_clock::now();
+
     // Multiply the matrices
     vector<vector<int>> M3 = multiplyMatrices(M1, M2, P);
 
+    // Stop counting the time
+    auto stop = high_resolution_clock::now();
+    auto elapsed = high_resolution_clock::now() - start;
+    long long duration = duration_cast<microseconds>(elapsed).count();
+
     // Write the result to an output file
     writeMatrixToFile(M3, "M3.txt");
+    ofstream file;
+    file.open("M3.txt", ios_base::app);
+    file << duration;
 
     cout << "Matrix multiplication complete. The result has been stored in M3.txt." << endl;
 
