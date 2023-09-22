@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <chrono>
 
 // Function to multiply two matrices
 std::vector<std::vector<int>> multiplyMatrices(const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B) {
@@ -72,6 +73,9 @@ void writeMatrixToFile(const std::vector<std::vector<int>>& matrix, const std::s
 }
 
 int main() {
+    // Start counting the time
+    auto start = std::chrono::high_resolution_clock::now();
+
     // Read matrices from input files
     std::vector<std::vector<int>> M1 = readMatrixFromFile("M1.txt");
     std::vector<std::vector<int>> M2 = readMatrixFromFile("M2.txt");
@@ -83,6 +87,14 @@ int main() {
     writeMatrixToFile(M3, "M3.txt");
 
     std::cout << "Matrix multiplication complete. The result has been stored in M3.txt." << std::endl;
+
+    // Stop counting the time and appends duration to M3
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::high_resolution_clock::now() - start;
+    long long duration = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+    std::ofstream file;
+    file.open("M3.txt", std::ios_base::app);
+    file << duration;
 
     return 0;
 }
