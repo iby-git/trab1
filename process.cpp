@@ -83,6 +83,7 @@ vector<vector<int>> readMatrixFromFile(const string& filename) {
         }
     }
 
+    file.close();
     return matrix;
 }
 
