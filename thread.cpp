@@ -1,46 +1,68 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <chrono>
+#include <thread>
 
-// Function to multiply two matrices
-std::vector<std::vector<int>> multiplyMatrices(const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B) {
+using namespace std;
+
+// Function to multiply a portion of two matrices
+void multiplyPart(const vector<vector<int>>& A, const vector<vector<int>>& B, vector<vector<int>>& result, int startRow, int endRow, int P) {
     int n1 = A.size();
     int m1 = A[0].size();
-    int n2 = B.size();
     int m2 = B[0].size();
 
-    // Check if the matrices can be multiplied
-    if (m1 != n2) {
-        std::cerr << "Error: Matrices cannot be multiplied. Number of columns in M1 must be equal to the number of rows in M2." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    std::vector<std::vector<int>> result(n1, std::vector<int>(m2, 0));
-
-    for (int i = 0; i < n1; i++) {
+    for (int i = startRow; i < endRow; i++) {
         for (int j = 0; j < m2; j++) {
+            result[i][j] = 0;
             for (int k = 0; k < m1; k++) {
                 result[i][j] += A[i][k] * B[k][j];
             }
         }
+    }
+}
+
+// Function to multiply two matrices using threads
+vector<vector<int>> multiplyMatrices(const vector<vector<int>>& A, const vector<vector<int>>& B, int P) {
+    int n1 = A.size();
+    int m2 = B[0].size();
+
+    vector<vector<int>> result(n1, vector<int>(m2, 0));
+    vector<thread> threads;
+
+    // Split the work among P threads
+    int rowsPerThread = n1 / P;
+    int startRow = 0;
+    int endRow = 0;
+
+    for (int i = 0; i < P; i++) {
+        startRow = endRow;
+        endRow += rowsPerThread;
+        if (i == P - 1) {
+            endRow = n1;
+        }
+        threads.emplace_back(multiplyPart, ref(A), ref(B), ref(result), startRow, endRow, P);
+    }
+
+    // Wait for all threads to finish
+    for (auto& thread : threads) {
+        thread.join();
     }
 
     return result;
 }
 
 // Function to read a matrix from a file
-std::vector<std::vector<int>> readMatrixFromFile(const std::string& filename) {
-    std::ifstream file(filename);
+vector<vector<int>> readMatrixFromFile(const string& filename) {
+    ifstream file(filename);
     if (!file) {
-        std::cerr << "Error opening file: " << filename << std::endl;
+        cerr << "Error opening file: " << filename << endl;
         exit(EXIT_FAILURE);
     }
 
     int numRows, numCols;
     file >> numRows >> numCols;
 
-    std::vector<std::vector<int>> matrix(numRows, std::vector<int>(numCols));
+    vector<vector<int>> matrix(numRows, vector<int>(numCols));
 
     for (int i = 0; i < numRows; i++) {
         for (int j = 0; j < numCols; j++) {
@@ -52,10 +74,10 @@ std::vector<std::vector<int>> readMatrixFromFile(const std::string& filename) {
 }
 
 // Function to write a matrix to a file
-void writeMatrixToFile(const std::vector<std::vector<int>>& matrix, const std::string& filename) {
-    std::ofstream file(filename);
+void writeMatrixToFile(const vector<vector<int>>& matrix, const string& filename) {
+    ofstream file(filename);
     if (!file) {
-        std::cerr << "Error opening file for writing: " << filename << std::endl;
+        cerr << "Error opening file for writing: " << filename << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -66,37 +88,33 @@ void writeMatrixToFile(const std::vector<std::vector<int>>& matrix, const std::s
 
     for (int i = 0; i < numRows; i++) {
         for (int j = 0; j < numCols; j++) {
-            file << "c" << i+1 << j+1 << " " << matrix[i][j] << " ";
-            file << "\n";
+            file << matrix[i][j] << " ";
         }
+        file << "\n";
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    // Check for the correct number of command-line arguments
+    if (argc != 4) {
+        cerr << "Usage: " << argv[0] << " M1 M2 P" << endl;
+        return 1;
+    }
 
     // Read matrices from input files
-    std::vector<std::vector<int>> M1 = readMatrixFromFile("M1.txt");
-    std::vector<std::vector<int>> M2 = readMatrixFromFile("M2.txt");
+    vector<vector<int>> M1 = readMatrixFromFile(argv[1]);
+    vector<vector<int>> M2 = readMatrixFromFile(argv[2]);
 
-    // Start counting the time
-    auto start = std::chrono::high_resolution_clock::now();
+    // Extract the value of P from the command line
+    int P = atoi(argv[3]);
 
     // Multiply the matrices
-    std::vector<std::vector<int>> M3 = multiplyMatrices(M1, M2);
-
-    // Stop counting the time
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::high_resolution_clock::now() - start;
-    long long duration = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-
-    // Print done
-    std::cout << "Matrix multiplication complete. The result has been stored in M3.txt." << std::endl;
+    vector<vector<int>> M3 = multiplyMatrices(M1, M2, P);
 
     // Write the result to an output file
     writeMatrixToFile(M3, "M3.txt");
-    std::ofstream file;
-    file.open("M3.txt", std::ios_base::app);
-    file << duration;
+
+    cout << "Matrix multiplication complete. The result has been stored in M3.txt." << endl;
 
     return 0;
 }
