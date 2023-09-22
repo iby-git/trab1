@@ -21,13 +21,13 @@ void generateAndStoreMatrix(int n, int m, const std::string& filename, int min, 
     }
 
     // Generate and store the matrix
-    file << n << ' ' << m << '\n';
+    file << n << " " << m << "\n";
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < m; j++) {
             int value = randomInt(min, max);
-            file << value << ' ';
+            file << value << " ";
         }
-        file << '\n';
+        file << "\n";
     }
 }
 
