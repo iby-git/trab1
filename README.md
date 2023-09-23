@@ -1,5 +1,6 @@
 # trab1
  trabalho 01 de SO
+<<<<<<< HEAD
  Link para a spreadsheet:
  Link para o gráfico:
  Link para as respostas:
@@ -15,3 +16,5 @@ run:
 ./sequential M1.txt M2.txt
 ./thread M1.txt M2.txt 10
 ./process M1.txt M2.txt 10
+=======
+>>>>>>> parent of 1b2c169 (readme with commands)
