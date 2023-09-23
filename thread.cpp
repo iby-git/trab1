@@ -4,131 +4,105 @@
 #include <thread>
 #include <chrono>
 
-using namespace std;
-using namespace std::chrono;
-
-// Function to multiply a portion of two matrices
-void multiplyPart(const vector<vector<int>>& A, const vector<vector<int>>& B, vector<vector<int>>& result, int startRow, int endRow, int P) {
+void multiply_part(const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B,
+                   std::vector<std::vector<int>>& result, int start_row, int end_row, int thread_num) {
     int n1 = A.size();
     int m1 = A[0].size();
     int m2 = B[0].size();
 
-    for (int i = startRow; i < endRow; i++) {
-        for (int j = 0; j < m2; j++) {
+    for (int i = start_row; i < end_row; ++i) {
+        for (int j = 0; j < m2; ++j) {
             result[i][j] = 0;
-            for (int k = 0; k < m1; k++) {
+            for (int k = 0; k < m1; ++k) {
                 result[i][j] += A[i][k] * B[k][j];
             }
         }
     }
+
+    // Calculate the computation time for this thread
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+
+    // Save the result to the corresponding file
+    write_matrix_to_file(result, "part_result_" + std::to_string(thread_num) + ".txt", duration);
 }
 
-// Function to multiply two matrices using threads
-vector<vector<int>> multiplyMatrices(const vector<vector<int>>& A, const vector<vector<int>>& B, int P) {
+void multiply_matrices(const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B,
+                      std::vector<std::vector<int>>& result, int P) {
     int n1 = A.size();
     int m2 = B[0].size();
 
-    vector<vector<int>> result(n1, vector<int>(m2, 0));
-    vector<thread> threads;
+    std::vector<std::thread> threads;
 
-    // Split the work among P threads
-    int rowsPerThread = n1 / P;
-    int startRow = 0;
-    int endRow = 0;
+    int rows_per_thread = n1 / P;
+    int start_row = 0;
+    int end_row = 0;
 
-    for (int i = 0; i < P; i++) {
-        startRow = endRow;
-        endRow += rowsPerThread;
+    for (int i = 0; i < P; ++i) {
+        auto start_time = std::chrono::high_resolution_clock::now(); // Start the timer for this thread
+        start_row = end_row;
+        end_row += rows_per_thread;
         if (i == P - 1) {
-            endRow = n1;
+            end_row = n1;
         }
-        threads.emplace_back(multiplyPart, ref(A), ref(B), ref(result), startRow, endRow, P);
+        threads.emplace_back(multiply_part, std::ref(A), std::ref(B), std::ref(result), start_row, end_row, i);
     }
 
-    // Wait for all threads to finish
+    // Start all threads
     for (auto& thread : threads) {
         thread.join();
     }
-
-    return result;
 }
 
-// Function to read a matrix from a file
-vector<vector<int>> readMatrixFromFile(const string& filename) {
-    ifstream file(filename);
-    if (!file) {
-        cerr << "Error opening file: " << filename << endl;
-        exit(EXIT_FAILURE);
-    }
-
+std::vector<std::vector<int>> read_matrix_from_file(const std::string& filename) {
+    std::ifstream file(filename);
     int numRows, numCols;
     file >> numRows >> numCols;
+    std::vector<std::vector<int>> matrix(numRows, std::vector<int>(numCols));
 
-    vector<vector<int>> matrix(numRows, vector<int>(numCols));
-
-    for (int i = 0; i < numRows; i++) {
-        for (int j = 0; j < numCols; j++) {
-            file >> matrix[i][j];
+    for (int i = 0; i < numRows; ++i) {
+        for (int j = 0; j < numCols; ++j) {
+            std::string cell;
+            file >> cell >> matrix[i][j];
         }
     }
-
-    file.close();
     return matrix;
 }
 
-// Function to write a matrix to a file
-void writeMatrixToFile(const vector<vector<int>>& matrix, const string& filename) {
-    ofstream file(filename);
-    if (!file) {
-        cerr << "Error opening file for writing: " << filename << endl;
-        exit(EXIT_FAILURE);
-    }
-
+void write_matrix_to_file(const std::vector<std::vector<int>>& matrix, const std::string& filename, long long duration) {
     int numRows = matrix.size();
     int numCols = matrix[0].size();
 
+    std::ofstream file(filename);
     file << numRows << " " << numCols << "\n";
-
-    for (int i = 0; i < numRows; i++) {
-        for (int j = 0; j < numCols; j++) {
-            file << "c" << i+1 << j+1 << " " << matrix[i][j] << " ";
-            file << "\n";
+    for (int i = 0; i < numRows; ++i) {
+        for (int j = 0; j < numCols; ++j) {
+            file << "c" << i + 1 << j + 1 << " " << matrix[i][j] << " ";
         }
+        file << "\n";
     }
+    file << "Time taken: " << duration << " microseconds\n";
 }
 
 int main(int argc, char* argv[]) {
-    // Check for the correct number of command-line arguments
     if (argc != 4) {
-        cerr << "Usage: " << argv[0] << " M1 M2 P" << endl;
+        std::cout << "Usage: " << argv[0] << " M1 M2 P\n";
         return 1;
     }
 
-    // Read matrices from input files
-    vector<vector<int>> M1 = readMatrixFromFile(argv[1]);
-    vector<vector<int>> M2 = readMatrixFromFile(argv[2]);
+    std::vector<std::vector<int>> M1 = read_matrix_from_file(argv[1]);
+    std::vector<std::vector<int>> M2 = read_matrix_from_file(argv[2]);
+    int P = std::stoi(argv[3]);
 
-    // Extract the value of P from the command line
-    int P = atoi(argv[3]);
+    std::vector<std::vector<int>> M3(M1.size(), std::vector<int>(M2[0].size()));
 
-    // Start counting the time
-    auto start = high_resolution_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();
+    multiply_matrices(M1, M2, M3, P);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
 
-    // Multiply the matrices
-    vector<vector<int>> M3 = multiplyMatrices(M1, M2, P);
-
-    // Stop counting the time
-    auto stop = high_resolution_clock::now();
-    auto elapsed = high_resolution_clock::now() - start;
-    long long duration = duration_cast<microseconds>(elapsed).count();
-
-    // Write the result to an output file
-    writeMatrixToFile(M3, "M3.txt");
-    ofstream file;
-    file.open("M3.txt", ios_base::app);
-    file << duration;
-
-    cout << "Matrix multiplication complete. The result has been stored in M3.txt." << endl;
+    write_matrix_to_file(M3, "M3.txt", duration);
+    std::cout << "Multiplication of matrices complete. The result has been stored in M3.txt and includes the time taken for each thread.\n";
 
     return 0;
 }
