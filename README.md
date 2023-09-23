@@ -11,7 +11,7 @@ Os programas de threads e processos aumentam sua eficiencia relativamente à par
 
 c) Qual é o valor de P ideal para a multiplicação das matrizes M1 e M2? Justifique sua resposta através dos experimentos realizados.
 
-Abb
+Valores baixos tendem a serem mais eficientes, mas muito baixos não. Valores entre 10 e 100 apresentaram os melhores tempos de execução.
 
 Link da spreadsheet > https://docs.google.com/spreadsheets/d/1w9tuNFJXTYYc9MBeeNyapENB5SAeC8n3-oW2AO7DVu4/edit?usp=sharing
 
