@@ -1,5 +1,9 @@
 # trab1
  trabalho 01 de SO
+ Link para a spreadsheet:
+ Link para o gráfico:
+ Link para as respostas:
+ Link para o vídeo:
 
 compile:
 
