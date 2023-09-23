@@ -4,71 +4,107 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <chrono>
+#include <string>
 
 using namespace std;
 using namespace std::chrono;
 
-// Function to multiply a portion of two matrices
-void multiplyPart(const vector<vector<int>>& A, const vector<vector<int>>& B, vector<vector<int>>& result, int startRow, int endRow) {
+void writeMatrixToFile(const vector<vector<int>> &matrix, const string &filename);
+
+// Função para multiplicar uma parte das duas matrizes
+pair<vector<vector<int>>, long long> multiplyPart(const vector<vector<int>> &A, const vector<vector<int>> &B, int startRow, int endRow)
+{
     int n1 = A.size();
     int m1 = A[0].size();
     int m2 = B[0].size();
+    vector<vector<int>> result(endRow - startRow, vector<int>(m2, 0));
 
-    for (int i = startRow; i < endRow; i++) {
-        for (int j = 0; j < m2; j++) {
-            result[i][j] = 0;
-            for (int k = 0; k < m1; k++) {
-                result[i][j] += A[i][k] * B[k][j];
+    auto start = high_resolution_clock::now();
+
+    for (int i = startRow; i < endRow; i++)
+    {
+        for (int j = 0; j < m2; j++)
+        {
+            result[i - startRow][j] = 0;
+            for (int k = 0; k < m1; k++)
+            {
+                result[i - startRow][j] += A[i][k] * B[k][j];
             }
         }
     }
+
+    auto stop = high_resolution_clock::now();
+    auto elapsed = high_resolution_clock::now() - start;
+    long long duration = duration_cast<microseconds>(elapsed).count();
+
+    return {result, duration};
 }
 
-// Function to multiply two matrices using processes
-vector<vector<int>> multiplyMatrices(const vector<vector<int>>& A, const vector<vector<int>>& B, int P) {
+// Função para multiplicar duas matrizes usando processos
+vector<string> multiplyMatrices(const vector<vector<int>> &A, const vector<vector<int>> &B, int P)
+{
     int n1 = A.size();
     int m2 = B[0].size();
 
     vector<vector<int>> result(n1, vector<int>(m2, 0));
+    vector<pid_t> childProcesses;
+    vector<string> fileNames;
 
     // Split the work among P child processes
     int rowsPerProcess = n1 / P;
     int startRow = 0;
     int endRow = 0;
 
-    for (int i = 0; i < P; i++) {
+    for (int i = 0; i < P; i++)
+    {
         startRow = endRow;
         endRow += rowsPerProcess;
-        if (i == P - 1) {
+        if (i == P - 1)
+        {
             endRow = n1;
         }
 
         pid_t pid = fork();
 
-        if (pid == -1) {
-            cerr << "Error creating child process." << endl;
+        if (pid == -1)
+        {
+            cerr << "Erro ao criar o processo filho." << endl;
             exit(EXIT_FAILURE);
-        } else if (pid == 0) {
-            // Child process
-            multiplyPart(A, B, result, startRow, endRow);
+        }
+        else if (pid == 0)
+        {
+            // Processo filho
+            auto partResult = multiplyPart(A, B, startRow, endRow);
+            string fileName = "result_" + to_string(i) + ".txt";
+            fileNames.push_back(fileName);
+            writeMatrixToFile(partResult.first, fileName);
+            ofstream file(fileName, ios_base::app);
+            file << partResult.second;
             exit(EXIT_SUCCESS);
+        }
+        else
+        {
+            childProcesses.push_back(pid);
         }
     }
 
-    // Wait for all child processes to finish
-    for (int i = 0; i < P; i++) {
+    // Esperar que todos os processos filhos terminem
+    for (int i = 0; i < P; i++)
+    {
         int status;
-        wait(&status);
+        waitpid(childProcesses[i], &status, 0);
     }
 
-    return result;
+    return fileNames;
 }
 
-// Function to read a matrix from a file
-vector<vector<int>> readMatrixFromFile(const string& filename) {
+// Função para ler uma matriz de um arquivo
+vector<vector<int>> readMatrixFromFile(const string &filename)
+{
     ifstream file(filename);
-    if (!file) {
-        cerr << "Error opening file: " << filename << endl;
+    if (!file)
+    {
+        cerr << "Erro ao abrir o arquivo: " << filename << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -77,8 +113,10 @@ vector<vector<int>> readMatrixFromFile(const string& filename) {
 
     vector<vector<int>> matrix(numRows, vector<int>(numCols));
 
-    for (int i = 0; i < numRows; i++) {
-        for (int j = 0; j < numCols; j++) {
+    for (int i = 0; i < numRows; i++)
+    {
+        for (int j = 0; j < numCols; j++)
+        {
             file >> matrix[i][j];
         }
     }
@@ -87,11 +125,13 @@ vector<vector<int>> readMatrixFromFile(const string& filename) {
     return matrix;
 }
 
-// Function to write a matrix to a file
-void writeMatrixToFile(const vector<vector<int>>& matrix, const string& filename) {
+// Função para escrever uma matriz em um arquivo
+void writeMatrixToFile(const vector<vector<int>> &matrix, const string &filename)
+{
     ofstream file(filename);
-    if (!file) {
-        cerr << "Error opening file for writing: " << filename << endl;
+    if (!file)
+    {
+        cerr << "Erro ao abrir o arquivo para escrita: " << filename << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -100,46 +140,68 @@ void writeMatrixToFile(const vector<vector<int>>& matrix, const string& filename
 
     file << numRows << " " << numCols << "\n";
 
-    for (int i = 0; i < numRows; i++) {
-        for (int j = 0; j < numCols; j++) {
-            file << "c" << i+1 << j+1 << " " << matrix[i][j] << " ";
-            file << "\n";
+    for (int i = 0; i < numRows; i++)
+    {
+        for (int j = 0; j < numCols; j++)
+        {
+            file << matrix[i][j] << " ";
         }
+        file << "\n";
     }
+
+    file.close();
 }
 
-int main(int argc, char* argv[]) {
-    // Check for the correct number of command-line arguments
-    if (argc != 4) {
-        cerr << "Usage: " << argv[0] << " M1 M2 P" << endl;
+// Função para combinar arquivos de resultado em um único arquivo de saída
+void combineResultFiles(const vector<string> &fileNames, const string &outputFile)
+{
+    ofstream output(outputFile);
+
+    for (const string &fileName : fileNames)
+    {
+        ifstream file(fileName);
+        output << file.rdbuf();
+        file.close();
+    }
+
+    output.close();
+}
+
+int main(int argc, char *argv[])
+{
+    // Verificar o número correto de argumentos da linha de comando
+    if (argc != 4)
+    {
+        cerr << "Uso: " << argv[0] << " M1 M2 P" << endl;
         return 1;
     }
 
-    // Read matrices from input files
+    // Ler matrizes dos arquivos de entrada
     vector<vector<int>> M1 = readMatrixFromFile(argv[1]);
     vector<vector<int>> M2 = readMatrixFromFile(argv[2]);
 
-    // Extract the number of processes from the command line
+    // Extrair o número de processos da linha de comando
     int P = atoi(argv[3]);
 
-    // Start counting the time
+    // Iniciar a contagem do tempo
     auto start = high_resolution_clock::now();
 
-    // Multiply the matrices
-    vector<vector<int>> M3 = multiplyMatrices(M1, M2, P);
+    // Multiplicar as matrizes e obter os nomes dos arquivos de resultado
+    vector<string> resultFiles = multiplyMatrices(M1, M2, P);
 
-    // Stop counting the time
+    // Combinar os arquivos de resultado em um único arquivo de saída
+    combineResultFiles(resultFiles, "M3.txt");
+
+    // Parar a contagem do tempo
     auto stop = high_resolution_clock::now();
     auto elapsed = high_resolution_clock::now() - start;
     long long duration = duration_cast<microseconds>(elapsed).count();
 
-    // Write the result to an output file
-    writeMatrixToFile(M3, "M3.txt");
-    ofstream file;
-    file.open("M3.txt", ios_base::app);
-    file << duration;
+    // Adicionar o tempo total ao arquivo de saída
+    ofstream output("M3.txt", ios_base::app);
+    output << "\nTempo total (microssegundos): " << duration << endl;
 
-    cout << "Matrix multiplication complete. The result has been stored in M3.txt." << endl;
+    cout << "Multiplicação de matrizes concluída. O resultado foi armazenado em M3.txt." << endl;
 
     return 0;
 }
