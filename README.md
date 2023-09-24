@@ -17,6 +17,8 @@ Link da spreadsheet > https://docs.google.com/spreadsheets/d/1w9tuNFJXTYYc9MBeeN
 
 Link do grafico > https://www.desmos.com/calculator/g00doavk0t
 
+Link do relatório > https://docs.google.com/document/d/1PZ5zQz4TPmqkJEC_SlQ9pr_MH1Y4EiUMSehzzg1fCb4/edit?usp=sharing
+
 
 compile:
 
